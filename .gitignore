@@ -50,3 +50,10 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+
+# file
+temp
+video.mp4
+server_folder
+client_folder
