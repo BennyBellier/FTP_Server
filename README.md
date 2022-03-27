@@ -18,14 +18,14 @@ Enfin commencer par lancer le serveur et ensuite le client.
 ### Côté serveur
 Pour le lancer:
 ```bash
-$ ./server <port>
+$ ./server
 ```
 le port est optionnel, si il n'est pas préciser le server se lancera par défaut sur le port 88888
 
 ### Côté client
 Pour le lancer:
 ```bash
-$ ./client <ip> <port>
+$ ./client <ip>
 ```
 Si le serveur est lancé sur votre machine ou alors que la machine cliente est connecté sur le même réseaux wifi que le serveur, vous pouvez utiliser `localhost` comme adresse ip.
 **Attention**, le port doit être le même que pour celui du serveur sinon le client n'arrivera pas à se connecter au serveur.
