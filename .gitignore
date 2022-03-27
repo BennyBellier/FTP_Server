@@ -53,7 +53,8 @@ dkms.conf
 
 
 # file
-temp
+temporary
 video.mp4
 server_folder
 client_folder
+.vscode
