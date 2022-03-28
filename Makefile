@@ -15,8 +15,8 @@ LDFLAGS =
 #LIBS += -lsocket -lnsl -lrt
 LIBS += -lpthread
 
-INCLUDE = csapp.h client_file_processor.h server.h request_processor.h server_com.h server_file_processor.h client.h client_com.h
-OBJS = csapp.o client_file_processor.o request_processor.o server_com.o server_file_processor.o client_com.o
+INCLUDE = csapp.h client_file_processor.h server.h request_processor.h server_com.h server_file_processor.h client.h client_com.h 
+OBJS = csapp.o client_file_processor.o request_processor.o server_com.o server_file_processor.o client_com.o 
 INCLDIR = -I.
 
 PROGS = server client

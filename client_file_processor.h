@@ -5,7 +5,7 @@
 #include "client.h"
 #include "client_com.h"
 
-void get_file(rio_t rio);
+void get_file(serv_conn_info serv_info, char *filename);
 
 void resume_get_file(serv_conn_info serv_info, char *filename);
 

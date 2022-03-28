@@ -64,7 +64,6 @@ void end_get_file(int part, int file)
   ftp_file_transfert block;
   ftp_file_descriptor f_desc;
   struct stat st;
-  printf("end get request\n");
   lseek(part, 0, SEEK_SET);
 
   read(part, &f_desc, sizeof(ftp_file_descriptor));
@@ -85,26 +84,30 @@ void end_get_file(int part, int file)
   }
 }
 
-void get_file(rio_t rio)
+void get_file(serv_conn_info serv_info, char *filename)
 {
   ftp_file_descriptor f_desc;
   time_t start, end;
   ftp_file_transfert block;
   int nb_block;
-  int nb_block_cur = 0;
+  long nb_block_cur = 0, dl_size = 0;
   char file_part_name[517];
-  long dl_size = 0;
 
-  Rio_readnb(&rio, &f_desc, sizeof(ftp_file_descriptor));
+  ftp_com msg;
+  strcpy(msg.content, filename);
+  msg.value = strlen(msg.content);
+  msg.type = GET;
+  client_send_block(serv_info, &msg, sizeof(ftp_com));
+
+  rio_readnb(&serv_info.rio, &f_desc, sizeof(ftp_file_descriptor));
   if (f_desc.error == 550)
   {
-    Fputs("FTP 550: File not found\n", stdout);
+    printf("FTP 550: File '%s' not found\n", filename);
     return;
   }
   file_name_check(f_desc.name);
   strcpy(file_part_name, f_desc.name);
   strcat(file_part_name, ".part");
-  printf("Start downloading\n");
 
   int file = Open(f_desc.name, O_WRONLY | O_CREAT, f_desc.perm);
   int file_part = Open(file_part_name, O_RDWR | O_CREAT, DEF_MODE);
@@ -118,7 +121,7 @@ void get_file(rio_t rio)
   {
     do
     {
-      Rio_readnb(&rio, &block, sizeof(ftp_file_transfert));
+      rio_readnb(&serv_info.rio, &block, sizeof(ftp_file_transfert));
       if (nb_block_cur == block.block_num)
       {
         Write(file_part, &block, sizeof(ftp_file_transfert));
@@ -154,7 +157,19 @@ void resume_get_file(serv_conn_info serv_info, char *filename)
   long current_block_number = -1;
   long dl_size = 0;
 
-  printf("start resume\n");
+  ftp_com msg;
+  strcpy(msg.content, filename);
+  msg.value = strlen(msg.content);
+  msg.type = RESUME;
+  client_send_block(serv_info, &msg, sizeof(ftp_com));
+
+  Rio_readnb(&serv_info.rio, &msg, sizeof(ftp_com));
+  if (msg.type == UNKNOWN_FILE)
+  {
+    printf("File doesn't exist\n");
+    return;
+  }
+
 
   strcpy(part_name, filename);
   strcat(part_name, ".part");
@@ -167,16 +182,15 @@ void resume_get_file(serv_conn_info serv_info, char *filename)
   }
 
   Read(part, &f_desc, sizeof(ftp_file_descriptor));
-  printf("%ld, %s, %d\n", f_desc.size, f_desc.name, f_desc.error);
   file = Open(f_desc.name, O_WRONLY | O_CREAT, f_desc.perm);
   int nb_block = (f_desc.size / MAXBUF) + 1;
-  printf("nb block: %d\n", nb_block);
 
   while (read(part, &block, sizeof(ftp_file_transfert)) > 0)
   {
     ++current_block_number;
     dl_size += block.bl_size;
   }
+
 
   if (current_block_number == nb_block + 1)
   {
@@ -186,12 +200,15 @@ void resume_get_file(serv_conn_info serv_info, char *filename)
   lseek(part, -(sizeof(ftp_file_transfert)), SEEK_CUR);
   dl_size -= block.bl_size;
 
-  client_send_block(serv_info.fd, &current_block_number, sizeof(long));
-  printf("sended block number %ld\n", current_block_number);
+  ftp_com start_block;
+  start_block.type = START_BLOCK;
+  start_block.value = current_block_number;
+
+  client_send_block(serv_info, &start_block, sizeof(ftp_com));
 
   do
   {
-    Rio_readnb(&serv_info.rio, &block, sizeof(ftp_file_transfert));
+    rio_readnb(&serv_info.rio, &block, sizeof(ftp_file_transfert));
     if (current_block_number == block.block_num)
     {
       Write(part, &block, sizeof(ftp_file_transfert));
@@ -205,8 +222,6 @@ void resume_get_file(serv_conn_info serv_info, char *filename)
     }
   } while (block.block_num + 1 < nb_block);
 
-  printf("dl siz: %ld\nf_desc: %ld\n", dl_size, f_desc.size);
-
   if (dl_size == f_desc.size)
   {
     end_get_file(part, file);
@@ -214,7 +229,9 @@ void resume_get_file(serv_conn_info serv_info, char *filename)
   }
   else
   {
-    printf("Error during resume\nPlease retry with get command\n");
+    printf("Error during resume\nPlease retry with get %s\n", f_desc.name);
+    remove(part_name);
+    remove(f_desc.name);
   }
 
   Close(file);

@@ -2,48 +2,60 @@
 
 void pwd(client_conn_info conn_info)
 {
-  char cwd[MAXBUF];
-  if (getcwd(cwd, MAXBUF) != NULL)
+  ftp_com cwd;
+  if (getcwd(cwd.content, sizeof(ftp_com)) != NULL)
   {
-    server_send_block(conn_info, cwd, MAXBUF);
+    cwd.value = strlen(cwd.content);
+    cwd.type = PWD;
+    server_send_block(conn_info, &cwd, sizeof(ftp_com));
   }
+}
+
+void pong(client_conn_info conn_info)
+{
+  ftp_com pong;
+  strcpy(pong.content, "pong\n");
+  pong.value = strlen(pong.content);
+  pong.type = PING;
+  server_send_block(conn_info, &pong, sizeof(ftp_com));
 }
 
 void request_processor(client_conn_info conn_info)
 {
-  size_t n;
-  char buf[MAXLINE];
+  ftp_com msg;
 
   Rio_readinitb(&conn_info.rio, conn_info.fd);
-  while ((n = Rio_readnb(&conn_info.rio, buf, MAXBUF)) != 0 && !conn_info.deconnect)
+  while (!conn_info.deconnect)
   {
-    if (strcmp(buf, "pwd") == 0)
+    rio_readnb(&conn_info.rio, &msg, sizeof(ftp_com));
+    switch (msg.type)
     {
+    case GET:
+      printf("%s> get '%s'\n", conn_info.ip_string, msg.content);
+      get_request(conn_info, msg.content);
+      break;
+    case RESUME:
+      printf("%s> resume '%s'\n", conn_info.ip_string, msg.content);
+      resume_request(conn_info, msg.content);
+      break;
+    case PWD:
       pwd(conn_info);
-    }
-    else
-    {
-      printf("%s> %s\n", conn_info.ip_string, buf);
-      if (strcmp(buf, "ping") == 0)
-      {
-        server_send_block(conn_info, "pong\n", MAXBUF);
-      }
-      else if (strcmp(buf, "quit") == 0)
-      {
-        conn_info.deconnect = 1;
-      }
-      else if (strstr(buf, "get") == buf)
-      {
-        get_request(conn_info, buf + 4);
-      }
-      else if (strstr(buf, "resume") == buf)
-      {
-        resume_request(conn_info, buf + 7);
-      }
-      else
-      {
-        server_send_block(conn_info, "Unknown command!\n", MAXBUF);
-      }
+      break;
+    case QUIT:
+      printf("%s> quit\n", conn_info.ip_string);
+      conn_info.deconnect = 1;
+      break;
+    case PING:
+      printf("%s> ping\n", conn_info.ip_string);
+      pong(conn_info);
+      break;
+
+    default:
+      memset(&msg, 0, sizeof(ftp_com));
+      msg.type = MSG;
+      strcpy(msg.content, "Unknown command!\n");
+      server_send_block(conn_info, &msg, sizeof(ftp_com));
+      break;
     }
   }
 }

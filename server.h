@@ -6,8 +6,8 @@
 #include "ftp_protocole.h"
 
 #define MAX_NAME_LEN 256
-#define NB_PROC 5
-#define SERV_FOLDER "./server_folder"
+#define NB_PROC 1
+#define SERV_FOLDER "./"
 
 typedef struct client_conn_info
 {

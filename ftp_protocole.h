@@ -10,7 +10,7 @@
 
 typedef struct ftp_file_descriptor
 {
-  long int size;
+  long size;
   char name[512];
   mode_t perm;
   int error;
@@ -20,14 +20,28 @@ typedef enum ftp_request
 {
   GET,
   RESUME,
-  NO_REQUEST
+  PWD,
+  QUIT,
+  END_OF_FILE,
+  START_BLOCK,
+  PING,
+  MSG,
+  FILE_EXIST,
+  UNKNOWN_FILE,
 } ftp_request;
 
 typedef struct ftp_file_transfert
 {
-  int block_num;
-  int bl_size;
-  char buf[MAXBUF];
+  long block_num;
+  ssize_t bl_size;
+  char buf[MAXBUF - (sizeof(long) + sizeof(ssize_t))];
 } ftp_file_transfert;
+
+typedef struct ftp_com
+{
+  ftp_request type;
+  long value; // used as length of content tab, or as integer value
+  char content[MAXBUF - (sizeof(ftp_request) + sizeof(long))];
+} ftp_com;
 
 #endif
