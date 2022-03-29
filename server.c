@@ -4,7 +4,7 @@ void connection_processor_generator(int listenfd, client_conn_info conn_info, so
 {
   while (1)
   {
-    while ((conn_info.fd = Accept(listenfd, (SA *)&clientaddr, &clientlen)) == 0)
+    while ((conn_info.fd = Accept(listenfd, (SA *)&clientaddr, &clientlen)) < 3)
     {
     }
     conn_info.deconnect = 0;
@@ -31,10 +31,18 @@ int main(int argc, char **argv)
   socklen_t clientlen;
   struct sockaddr_in clientaddr;
   client_conn_info conn_info;
+  master_conn master;
 
   chdir(SERV_FOLDER);
   clientlen = (socklen_t)sizeof(clientaddr);
   listenfd = Open_listenfd(FTP_PORT);
+
+  master.fd = Accept(listenfd, (SA *)&master.sockaddr, &master.socklen);
+  master.disconnect = 0;
+  Getnameinfo((SA *)&master.sockaddr, master.socklen, master.hostname, MAX_NAME_LEN, 0, 0, 0);
+  Inet_ntop(AF_INET, &master.sockaddr.sin_addr, master.ip_string, INET_ADDRSTRLEN);
+
+  rio_readnb(master);
 
   for (int i = 0; i < NB_PROC; i++)
   {
@@ -48,7 +56,7 @@ int main(int argc, char **argv)
   if (getgid() != 0) {
     Close(listenfd);
 
-    printf("\033[1;32mServer ready\033[0;37m\n");
+    printf("\033[1;32mServer ready\033[0;37m on port: %d\n", FTP_PORT);
 
     while (1)
     {

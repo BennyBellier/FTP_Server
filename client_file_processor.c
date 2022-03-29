@@ -114,26 +114,23 @@ void get_file(serv_conn_info serv_info, char *filename)
 
   Write(file_part, &f_desc, sizeof(ftp_file_descriptor));
 
-  nb_block = (f_desc.size / MAXBUF) + 1;
+  nb_block = (f_desc.size / BLOCK_SIZE) + 1;
 
   start = time(NULL);
-  if (nb_block > 0)
+  while (nb_block > 0 && block.block_num < nb_block - 1)
   {
-    do
+    rio_readnb(&serv_info.rio, &block, sizeof(ftp_file_transfert));
+    if (nb_block_cur == block.block_num)
     {
-      rio_readnb(&serv_info.rio, &block, sizeof(ftp_file_transfert));
-      if (nb_block_cur == block.block_num)
-      {
-        Write(file_part, &block, sizeof(ftp_file_transfert));
-        ++nb_block_cur;
-        dl_size += block.bl_size;
-      }
-      else
-      {
-        Fputs("FTP \033[1;35m426\033[0;37m: transfer aborted.\n\033[1;31mServer disconnected\033[0;37m\n", stdout);
-        exit(0);
-      }
-    } while (block.block_num + 1 < nb_block);
+      Write(file_part, &block, sizeof(ftp_file_transfert));
+      ++nb_block_cur;
+      dl_size += block.bl_size;
+    }
+    else
+    {
+      Fputs("FTP \033[1;35m426\033[0;37m: transfer aborted.\n\033[1;31mServer disconnected\033[0;37m\n", stdout);
+      exit(0);
+    }
   }
   end = time(NULL);
 
@@ -236,7 +233,4 @@ void resume_get_file(serv_conn_info serv_info, char *filename)
 
   Close(file);
   Close(part);
-
-
-
 }

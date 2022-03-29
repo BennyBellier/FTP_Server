@@ -41,14 +41,14 @@ void get_request(client_conn_info conn_info, char *filename)
     printf("%s> Tried to access a non-existent file '%s'\n", conn_info.ip_string, filename);
     return;
   }
-  nb_block = (fz / sizeof(block.buf)) + 1;
+  nb_block = (fz / BLOCK_SIZE) + 1;
 
   memset(&block, 0, sizeof(ftp_file_transfert));
 
-  for (int i = 0; i < nb_block; i++)
+  for (long i = 0; i < nb_block; i++)
   {
-    block.bl_size = Read(fd, block.buf, MAXBUF);
-    block.block_num = (long) i;
+    block.bl_size = Read(fd, block.buf, BLOCK_SIZE);
+    block.block_num = i;
     if (conn_info.deconnect)
     {
       printf("break\n");
@@ -76,9 +76,9 @@ void resume_request(client_conn_info conn_info, char *filename)
   }
   file_state.type = FILE_EXIST;
   server_send_block(conn_info, &file_state, sizeof(ftp_com));
-  
+
   fstat(fd, &st);
-  nb_block = (st.st_size / MAXBUF) + 1;
+  nb_block = (st.st_size / BLOCK_SIZE) + 1;
 
   if (rio_readnb(&conn_info.rio, &start_block, sizeof(ftp_com)) != sizeof(ftp_com))
   {
@@ -87,7 +87,7 @@ void resume_request(client_conn_info conn_info, char *filename)
   }
   if (start_block.type == START_BLOCK)
   {
-    lseek(fd, (start_block.value * MAXBUF), SEEK_SET);
+    lseek(fd, (start_block.value * sizeof(BLOCK_SIZE)), SEEK_SET);
   }
   else
   {
@@ -96,7 +96,7 @@ void resume_request(client_conn_info conn_info, char *filename)
 
   for (int i = start_block.value; i < nb_block; i++)
   {
-    block.bl_size = Read(fd, block.buf, MAXBUF);
+    block.bl_size = Read(fd, block.buf, BLOCK_SIZE);
     block.block_num = i;
     if (conn_info.deconnect)
     {
