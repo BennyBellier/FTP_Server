@@ -118,7 +118,6 @@ void get_request(client_conn_info conn_info, char *filename)
 void resume_request(client_conn_info conn_info, char *filename)
 {
   int fd;
-  ftp_file_transfert block;
   struct stat st;
   ftp_com start_block;
   ftp_com file_state;

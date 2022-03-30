@@ -31,20 +31,35 @@ void quit()
 
 int main(int argc, char **argv)
 {
-  int listenfd;
+  int listenfd, port;
   socklen_t clientlen;
   struct sockaddr_in clientaddr;
   client_conn_info conn_info;
 
+  // Initialisation du port du serveur a FTP_PORT (2121) si l'utilisateur n'a pas précisé de port
+  if (argc < 2)
+  {
+    fprintf(stderr, "usage: %s <host>\n", argv[0]);
+    exit(0);
+  }
+  else if (argc == 2)
+  {
+    port = FTP_PORT;
+  }
+  else if (argc == 3)
+  {
+    port = atoi(argv[2]);
+  }
+
   chdir(SERV_FOLDER);
   clientlen = (socklen_t)sizeof(clientaddr);
-  listenfd = Open_listenfd(FTP_PORT);
+  listenfd = Open_listenfd(port);
 
   for (int i = 0; i < NB_PROC; i++)
   {
     if ((Fork()) == 0)
     {
-      // génération des traitans de connexions
+      // génération des traitans de connexions client
       connection_processor_generator(listenfd, conn_info, clientlen, clientaddr);
     }
   }
@@ -54,7 +69,7 @@ int main(int argc, char **argv)
     // Le père ne gère pas les connexion avec les client on peut donc fermé l'écoute des connexion
     Close(listenfd);
 
-    printf("\033[1;32mServer ready\033[0;37m\n");
+    printf("\033[1;32mServer ready on port %d\033[0;37m\n", FTP_PORT);
 
     while (1)
     {

@@ -6,12 +6,15 @@
 #include <string.h>
 
 #define RWX_UGO (S_IRWXU | S_IRWXG | S_IRWXO)
-#define FTP_PORT 2121
 #define MAX_NAME_LEN 256
-#define NB_PROC 5
-#define SERV_FOLDER "./"
 #define MAX_BLOCK_SIZE (MAXBUF - (sizeof(long) + sizeof(ssize_t)))
 #define MAX_MSG_LEN (MAXBUF - (sizeof(ftp_request) + sizeof(long)))
+
+// Modifiable
+#define FTP_PORT 2121
+#define NB_PROC 5
+#define CLIENT_FOLDER "client_folder/"
+#define SERV_FOLDER "server_folder/"
 
 // structure décrivant le fichier
 typedef struct ftp_file_descriptor
@@ -22,7 +25,7 @@ typedef struct ftp_file_descriptor
   int error;      // code d'erreur 550 si le fichier n'existe pas sinon 250
 } ftp_file_descriptor;
 
-// Enumeration des requête (non utilisé dans cette partie)
+// Enumeration des requête
 typedef enum ftp_request
 {
   GET,
