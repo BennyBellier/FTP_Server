@@ -1,5 +1,6 @@
 #include "client_file_processor.h"
 
+// Affichage des informations de téléchargement (taille du fichiers, temps, vitesse de téléchargement)
 void display_download_info(long f_size, long dl_size, time_t start, time_t end)
 {
   if (f_size == dl_size)
@@ -49,6 +50,7 @@ void display_download_info(long f_size, long dl_size, time_t start, time_t end)
   }
 }
 
+// Récupératio seulement du nom du fichiers (sans le chemins de dossier(s))
 void file_name_check(char *fname)
 {
   char *p = strtok(fname, "/");
@@ -59,27 +61,41 @@ void file_name_check(char *fname)
   }
 }
 
+// Écriture du fichier final
 void end_get_file(int part, int file)
 {
   ftp_file_transfert block;
   ftp_file_descriptor f_desc;
   struct stat st;
+  // Reset de la tête de lecture au début du fichier
   lseek(part, 0, SEEK_SET);
 
+  // lecture du descripteur de fichier
   read(part, &f_desc, sizeof(ftp_file_descriptor));
 
+  // Boucle de lecture des blocks téléchargé dans le fichier '.part' avec leurs informations complémentaires
   while (read(part, &block, sizeof(ftp_file_transfert)) > 0)
   {
+    // Écriture dans le fichier final
     Write(file, block.buf, block.bl_size);
   }
 
+  // Vérification fichier téléchargé conforme
   fstat(file, &st);
-
   if (f_desc.size == st.st_size)
   {
     char part_name[512];
     strcpy(part_name, f_desc.name);
     strcat(part_name, ".part");
+    remove(part_name);
+  }
+  else
+  {
+    char part_name[512];
+    printf("Erreur fichiers corrompu\nRééssayer en utilisant la commande 'get'\n");
+    strcpy(part_name, f_desc.name);
+    strcat(part_name, ".part");
+    remove(f_desc.name);
     remove(part_name);
   }
 }
