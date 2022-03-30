@@ -9,21 +9,22 @@ typedef struct Queue_elem *Queue;
 
 struct Queue_elem
 {
-  int fd;
-  rio_t rio;
+  char hostname[MAX_NAME_LEN];
+  int port;
   long nb_fils_libre;
   Queue next;
 };
 
 Queue creer_file_vide();
 
-Queue inserer(Queue f, int fd, rio_t rio);
+Queue inserer(Queue f, char *host, int port);
 
-Queue extraire(Queue f, int *fd, rio_t *rio);
+Queue extraire(Queue f, char *host, int *port);
+
+int nb_elem(Queue f);
 
 int est_vide_file(Queue f);
 
 void detruire_file(Queue f);
-
 
 #endif

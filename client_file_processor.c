@@ -100,6 +100,7 @@ void get_file(serv_conn_info serv_info, char *filename)
   client_send_block(serv_info, &msg, sizeof(ftp_com));
 
   rio_readnb(&serv_info.rio, &f_desc, sizeof(ftp_file_descriptor));
+  printf("%s\n", f_desc.name);
   if (f_desc.error == 550)
   {
     printf("FTP 550: File '%s' not found\n", filename);

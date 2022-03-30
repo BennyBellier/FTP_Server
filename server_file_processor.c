@@ -1,14 +1,50 @@
 #include "server_file_processor.h"
 
+void recherche_fichier(char *filename)
+{
+  int fds[2];
+  pipe(fds);
+
+  if (Fork() == 0)
+  {
+    close(fds[0]);
+    dup2(fds[1], 1);
+    close(fds[1]);
+    // execution de la commande find pour trouver le fichier dans les sous-repertoires du serveur
+    execlp("find", "find", "./server_folder", "-name", filename, NULL);
+    exit(0);
+  }
+  else
+  {
+    close(fds[1]);
+    int status;
+    char buf[512];
+    while (waitpid(-1, &status, WNOHANG) != -1);
+
+    read(fds[0], buf, sizeof(buf));
+    buf[strcspn(buf, "\n")] = 0;
+    strcpy(filename, buf);
+  }
+
+}
+
 int send_file_desc(client_conn_info conn_info, char *filename, long *file_size)
 {
   struct stat st;
   int fd = 0;
   ftp_file_descriptor f_desc;
 
+
   fd = open(filename, O_RDONLY);
 
-  if (fd > 0)
+  // recherche du fichier dans les sous-dossiers
+  if (fd == -1)
+  {
+    recherche_fichier(filename);
+    fd = open(filename, O_RDONLY);
+  }
+
+  if (fd > 3)
   {
     strcpy(f_desc.name, filename);
     fstat(fd, &st);
@@ -68,6 +104,14 @@ void resume_request(client_conn_info conn_info, char *filename)
   ftp_com file_state;
 
   fd = open(filename, O_RDONLY);
+  // recherche du fichier dans les sous-dossiers
+  if (fd == -1)
+  {
+    recherche_fichier(filename);
+    fd = open(filename, O_RDONLY);
+  }
+
+  // Si le fichier n'existe pas
   if (fd < 3)
   {
     file_state.type = UNKNOWN_FILE;

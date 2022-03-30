@@ -4,11 +4,4 @@
 #include "ftp_protocole.h"
 #include "queue.h"
 
-typedef struct server_slave
-{
-  int fd;
-  rio_t rio;
-
-} server_slave;
-
 #endif

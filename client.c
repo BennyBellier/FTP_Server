@@ -113,11 +113,15 @@ int main(int argc, char **argv)
 
   serv_info.fd = Open_clientfd(host, port);
   serv_info.disconnected = 0;
-  printf("client connected to FTP server\n");
   Rio_readinitb(&serv_info.rio, serv_info.fd);
 
-  server_pwd(serv_info, host);
-  client_request(serv_info, host);
+  ftp_com msg;
+
+  rio_readnb(&serv_info.rio, &msg, sizeof(ftp_com));
+  printf("%s:%ld\n", msg.content, msg.value);
+
+  // server_pwd(serv_info, host);
+  // client_request(serv_info, host);
 
   quit(serv_info);
 }

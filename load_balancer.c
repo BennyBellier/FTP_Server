@@ -5,47 +5,100 @@ void quit()
   kill(-getpid(), SIGINT);
 }
 
-int main(int argc, char **argv)
+void slave_process_generator(int listenfd, slave_conn_info slave, socklen_t slavelen, struct sockaddr_in slaveaddr, Queue slave_queue)
 {
-  Queue slave_queue;
+  slave.fd = Accept(listenfd, (SA*)&slaveaddr, &slavelen);
+  Getnameinfo((SA*)&slaveaddr, slavelen, slave.hostname, MAX_NAME_LEN, 0, 0, 0);
+  Inet_ntop(AF_INET, &slaveaddr.sin_addr, slave.ip_string, INET_ADDRSTRLEN);
+  printf("Slave %s (%s) connected on PID : %d\n", slave.hostname, slave.ip_string, getpid());
 
-  if (argc < 2)
+  Rio_readinitb(&slave.rio, slave.fd);
+
+  // Reponse comme quoi l'esclave est bien connecté au master
+  ftp_com msg;
+  msg.type = MASTER_CONNECTED;
+  rio_writen(slave.fd, &msg, sizeof(ftp_com));
+
+  // Récupération du port de l'esclave
+  rio_readnb(&slave.rio, &msg, sizeof(ftp_com));
+
+  slave_queue = inserer(slave_queue, slave.hostname, msg.value);
+  int print = 0;
+  while (1)
   {
-    printf("usage: %s <server_ip1> <server_port1> <server_ip1> <server_port2> ...\n", argv[0]);
+    if (!print)
+    {
+      printf("%d\n", nb_elem(slave_queue));
+      print = 1;
+    }
+  }
+}
+
+void slave_connection_generator(socklen_t *slavelen, struct sockaddr_in *slaveaddr, int listenfd, slave_conn_info slave, Queue slave_queue)
+{
+  for (int i = 0; i < NB_SLAVE; i++)
+  {
+    if (Fork() == 0)
+    {
+      slave_process_generator(listenfd, slave, *slavelen, *slaveaddr, slave_queue);
+    }
+  }
+}
+
+void client_connection_manager(int listenfd, socklen_t *clientlen, struct sockaddr_in *clientaddr, Queue slave_queue)
+{
+  if (Fork() == 0)
+  {
+    int fd;
+    ftp_com msg;
+    int port;
+
+    fd = Accept(listenfd, (SA *)clientaddr, clientlen);
+
+    slave_queue = extraire(slave_queue, msg.content, &port);
+
+    msg.value = port;
+    msg.type = SLAVE_CONNECTION_INFO;
+    rio_writen(fd, &msg, sizeof(ftp_com));
+
     exit(0);
   }
+}
 
-  slave_queue = creer_file_vide();
+int main(int argc, char **argv)
+{
+  int listenfd;
+  socklen_t slavelen;
+  struct sockaddr_in slaveaddr;
+  slave_conn_info slave;
+  Queue slave_queue = creer_file_vide();
+  
 
-  for (int i = 1; i < (argc - 1); i += 2)
-  {
-    int port = atoi(argv[i+1]);
-    char *host = argv[i];
-    int fd;
-    rio_t rio;
+  slavelen = (socklen_t)sizeof(slaveaddr);
+  listenfd = Open_listenfd(FTP_PORT);
 
-    fd = Open_clientfd(host, port);
-    printf("Load balancer connected to serverz %s on port %d\n", host, port);
-    Rio_readinitb(&rio, fd);
+  // Gestion des esclaves
+  slave_connection_generator(&slavelen, &slaveaddr, listenfd, slave, slave_queue);
 
-    slave_queue = inserer(slave_queue, fd, rio);
-  }
+  socklen_t clientlen;
+  struct sockaddr_in clientaddr;
 
-  // int listenfd;
-  // struct sockaddr_in clientaddr;
-  // socklen_t clientlen;
+  // Gestionnaire de connexion client
+  client_connection_manager(listenfd, &clientlen, &clientaddr, slave_queue);
 
-  // clientlen = (socklen_t)sizeof(clientaddr);
-  // listenfd = Open_listenfd(FTP_PORT);
+  Close(listenfd);
 
+  // Load balancer father
   if (getgid() != 0)
   {
-    // Close(listenfd);
-
-    printf("\033[1;33mLoad balancer ready\033[0;37m\n");
+    printf("\033[1;33mLoad balancer ready on port %d\033[0;37m\n", FTP_PORT);
 
     while (1)
     {
+      if (!est_vide_file(slave_queue))
+      {
+        printf("Queue as %d slave\n", nb_elem(slave_queue));
+      }
       char result;
       scanf("%s", &result);
       switch (result)
@@ -60,5 +113,5 @@ int main(int argc, char **argv)
       }
     }
   }
-  exit(0);
+  kill(-getpid(), SIGINT);
 }
