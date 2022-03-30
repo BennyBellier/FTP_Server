@@ -4,9 +4,6 @@
 #include <unistd.h>
 #include "ftp_protocole.h"
 
-
-#define CLIENT_FOLDER "client_folder/"
-
 typedef struct serv_conn_info
 {
   int fd;
